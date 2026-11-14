@@ -1,3 +1,14 @@
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .action {
   padding: 5px 10px;
   border: none;

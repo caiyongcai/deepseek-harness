@@ -25,6 +25,7 @@ import { SessionControlController } from './control.ts'
 import { HistoryController } from './history/controller.ts'
 import { StateController } from './state/controller.ts'
 import { WebController } from './web/controller.ts'
+import { SessionAnnotations } from './annotations.ts'
 import { SessionFileReferences } from './file-references.ts'
 import { ApiSessionList } from './list.ts'
 import { buildModelCatalog, hasProviderApiKey } from './catalog.ts'
@@ -68,6 +69,7 @@ import type {
 
 export type * from './types.ts'
 export { ApiSessionNotFound } from './agent.ts'
+export { SessionAnnotations } from './annotations.ts'
 export { SessionFileReferences } from './file-references.ts'
 export { SessionSkillCatalog } from './skill-catalog.ts'
 
@@ -216,6 +218,7 @@ export class SessionController extends TypertRemoteService {
     ctx.plugin(SessionFileReferences)
     ctx.plugin(SessionMediaReferences)
     ctx.plugin(SessionSkillCatalog)
+    ctx.plugin(SessionAnnotations)
     // An archived Session, or a subagent descendant of one, runs no model step
     // until it is restored; what it still runs is stopped by the owners that
     // answer the Workspace registry's archive-admission events.

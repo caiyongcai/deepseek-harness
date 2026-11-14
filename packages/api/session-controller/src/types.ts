@@ -29,6 +29,56 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
   }
 }
 
+/** Annotation operation the browser asks the Host to run against one quotation. */
+export interface AnnotationRequest {
+  /** `ask` answers the reader's question about the quotation; `explain` explains the quotation itself. */
+  readonly kind: 'ask' | 'explain'
+  /** The quoted conversation text the annotation anchors to. */
+  readonly quote: string
+  /** The reader's question; required for `ask`, ignored for `explain`. */
+  readonly question?: string
+}
+
+/** One persisted quotation annotation, stored per Session in the storage domain. */
+export interface SessionAnnotation {
+  /** The annotation's identity; the browser mints it at creation. */
+  readonly id: string
+  /** `ask` answers the reader's question about the quotation; `explain` explains the quotation itself. */
+  readonly kind: 'ask' | 'explain'
+  /** The quoted conversation text the annotation anchors to. */
+  readonly quote: string
+  /** The reader's question; present only for `ask` annotations. */
+  readonly question?: string | undefined
+  /** `pending` while the one-shot generation runs; `done`/`failed` once settled. */
+  readonly status: 'pending' | 'done' | 'failed'
+  /** The model's reply once `status` is `done`; the failure message once `failed`. */
+  readonly answer: string
+  /** Creation time, epoch milliseconds. */
+  readonly createdAt: number
+}
+
+/** Request listing one Session's persisted annotations. */
+export interface AnnotationListRequest {
+  /** The Session whose annotations are listed. */
+  readonly sessionId: SessionId
+}
+
+/** Request upserting one annotation into one Session's persisted set. */
+export interface AnnotationPutRequest {
+  /** The Session the annotation belongs to. */
+  readonly sessionId: SessionId
+  /** The full annotation record to store. */
+  readonly annotation: SessionAnnotation
+}
+
+/** Request deleting one annotation from one Session's persisted set. */
+export interface AnnotationDeleteRequest {
+  /** The Session the annotation belongs to. */
+  readonly sessionId: SessionId
+  /** The annotation's identity. */
+  readonly id: string
+}
+
 /** Persisted hints used to summarize a cold Session. */
 export interface SessionListMetadata {
   /** Whether the folded prefix contains no turn. */
@@ -182,6 +232,18 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
     /** A wait observation ended before a stopping state; the caller should reread. */
     'session/observation-ended': Record<string, never>
+    /** An annotation request carried an empty quotation. */
+    'annotations/empty-quote': Record<string, never>
+    /** An ask annotation request omitted the question. */
+    'annotations/empty-question': Record<string, never>
+    /** The Session has no provider/model route to annotate with yet. */
+    'annotations/no-model': Record<string, never>
+    /** The annotation model call failed; details stay on the Host. */
+    'annotations/failed': Record<string, never>
+    /** The annotation model call ended without text output. */
+    'annotations/empty-result': Record<string, never>
+    /** The annotation storage domain is not open yet. */
+    'annotations/not-ready': Record<string, never>
     /** No state arrived before the deadline; a timeout after a state returns its value instead. */
     'session/wait-timeout': Record<string, never>
     'session/provider-credentials-unavailable': Record<string, never>

@@ -177,6 +177,10 @@ export const VIEWER_ENDPOINT_CLASSES = {
   'claudeCodeMods/watchBand': 'owner-only', // owner Claude Code mods UI
   'cotTranslation/limits': 'owner-only', // owner chain-of-thought translation UI
   'cotTranslation/translate': 'owner-only', // owner chain-of-thought translation UI
+  'annotations/generate': 'owner-only', // owner quotation-annotation generation (one-off LLM call)
+  'annotations/list': 'owner-only', // owner quotation-annotation persistence read
+  'annotations/put': 'owner-only', // owner quotation-annotation persistence write
+  'annotations/delete': 'owner-only', // owner quotation-annotation persistence delete
   'cuaAccess/applicationIcons': 'owner-only', // owner computer-use permissions
   'cuaAccess/applications': 'owner-only', // owner computer-use permissions
   'cuaAccess/enablePersistentPtc': 'owner-only', // owner computer-use permissions

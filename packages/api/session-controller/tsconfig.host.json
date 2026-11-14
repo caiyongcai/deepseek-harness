@@ -10,6 +10,7 @@
     "src/types.ts",
     "src/remote-events.ts",
     "src/agent.ts",
+    "src/annotations.ts",
     "src/assistant-stream.ts",
     "src/catalog.ts",
     "src/commands.ts",
@@ -67,6 +68,9 @@
     },
     {
       "path": "../../interaction/permission-presets"
+    },
+    {
+      "path": "../../storage/storage-domain"
     },
     {
       "path": "../../jobs/jobs"

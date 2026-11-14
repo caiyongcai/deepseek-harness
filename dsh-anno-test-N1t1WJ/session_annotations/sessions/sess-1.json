@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "record": {
+    "items": [
+      {
+        "id": "a1",
+        "kind": "ask",
+        "quote": "quoted text",
+        "question": "why?",
+        "status": "done",
+        "answer": "because",
+        "createdAt": 123
+      },
+      {
+        "id": "a2",
+        "kind": "explain",
+        "quote": "quoted text",
+        "question": "why?",
+        "status": "done",
+        "answer": "because",
+        "createdAt": 123
+      }
+    ]
+  }
+}

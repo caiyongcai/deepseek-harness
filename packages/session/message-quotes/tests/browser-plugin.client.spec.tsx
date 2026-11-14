@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /** Quote registrations follow their plugin and Slot declaration lifetimes. */
-import { Context } from '@deepseek-ai/cordis'
+import { Context, Service } from '@deepseek-ai/cordis'
 import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { TestSessions } from '@deepseek-ai/dsh-client-test-runtime'
@@ -20,6 +20,23 @@ async function fixture() {
   const sessionId = await sessions.add({ id: 'quote' })
   sessions.retainFor(ctx, sessionId)
   ctx.provide('sessions', sessions)
+  // The annotation panel's injected seats, stubbed the way ui-reference specs
+  // stub their Remote namespaces: the `remote` seat itself plus the dotted
+  // `remote.annotations` namespace service the gateway installs per namespace.
+  ctx.provide('sidebarRightTabs', { register: () => () => {} } as never)
+  ctx.provide('sidebarRight', { openTabIn: () => {} } as never)
+  class RemoteService extends Service {
+    constructor(serviceCtx: Context) {
+      super(serviceCtx, 'remote')
+    }
+  }
+  new RemoteService(ctx)
+  ctx.provide('remote.annotations', {
+    generate: async () => ({ ok: true, value: '' }),
+    list: async () => ({ ok: true, value: [] }),
+    put: async () => ({ ok: true, value: undefined }),
+    delete: async () => ({ ok: true, value: true }),
+  } as never)
   const conversation = new UiConversation(ctx, sessions)
   await ctx.plugin(SlotRegistry).await()
   ctx.provide('locale', new LocaleRuntime(ctx))
