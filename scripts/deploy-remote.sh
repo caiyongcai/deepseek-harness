@@ -5,7 +5,7 @@
 #   scripts/deploy-remote.sh --host <IP> --user <用户名> --path <远端目录> \
 #     [--password <密码>] [--port 3081] [--bind <远端网卡IP>] [--api-key <sk-...>]
 #     [--registry <npm镜像>] [--skip-build] [--skip-install] [--no-migrate]
-#     [--copy-credentials] [--rollback <迁移ID>] [--status] [--logs [行数]] [--stop] [--restart]
+#     [--trusted-host <host[:port]>...] [--copy-credentials] [--rollback <迁移ID>] [--status] [--logs [行数]] [--stop] [--restart]
 #
 # 关键设计：
 # 1. 代码与数据分离：代码在 <path>/app，数据（DSH_HOME）在 <path>/data/.dsh。
@@ -34,6 +34,7 @@ COPY_CREDENTIALS="0"
 ACTION="deploy"
 ROLLBACK_ID=""
 LOG_LINES="80"
+TRUSTED_HOSTS=()
 
 usage() {
   grep '^#' "$0" | sed 's/^# \{0,1\}//' | sed -n '3,20p'
@@ -50,6 +51,7 @@ while [[ $# -gt 0 ]]; do
     --bind) BIND_HOST="$2"; shift 2 ;;
     --api-key) API_KEY="$2"; shift 2 ;;
     --registry) REGISTRY="$2"; shift 2 ;;
+    --trusted-host) TRUSTED_HOSTS+=("$2"); shift 2 ;;
     --skip-build) SKIP_BUILD="1"; shift ;;
     --skip-install) SKIP_INSTALL="1"; shift ;;
     --no-migrate) NO_MIGRATE="1"; shift ;;
@@ -149,7 +151,7 @@ do_package() {
   if git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     # 已跟踪文件 + 构建产物（各包 lib/ 与 apps/web/dist/，均被 .gitignore 排除）+ migrations。
     git -C "$REPO_ROOT" archive --format=tar -o "$work_tar" HEAD
-    (cd "$REPO_ROOT" && find packages apps -type d -name node_modules -prune \
+    (cd "$REPO_ROOT" && find packages apps vendor native -type d -name node_modules -prune \
       -o -type d \( -name lib -o -name dist \) -prune -print | tar -rf "$work_tar" -T -)
     [[ -d "$REPO_ROOT/scripts/migrations" ]] && (cd "$REPO_ROOT" && tar -rf "$work_tar" scripts/migrations)
   else
@@ -167,6 +169,12 @@ DSH_HOME_REMOTE="$DATA_DIR/.dsh"
 SERVICE_LOG="$REMOTE_PATH/service.log"
 SERVICE_PID="$REMOTE_PATH/service.pid"
 SERVICE_MODE="nohup"
+
+# /api 浏览器信任围栏：公网域名/IP 访问时必须登记为信任主机。
+TRUST_FLAGS=""
+for th in "${TRUSTED_HOSTS[@]:-}"; do
+  [[ -n "$th" ]] && TRUST_FLAGS="$TRUST_FLAGS --trusted-host $th"
+done
 
 start_service() {
   local bind="$1"
@@ -194,7 +202,7 @@ User=$REMOTE_USER
 WorkingDirectory=$APP_DIR
 Environment=DSH_HOME=$DSH_HOME_REMOTE
 EnvironmentFile=-$APP_DIR/.env
-ExecStart=$node_bin --import tsx/esm apps/cli/src/bin.ts web --no-open --host $bind --port $PORT
+ExecStart=$node_bin --import tsx/esm apps/cli/src/bin.ts web --no-open --host $bind --port $PORT$TRUST_FLAGS
 StandardOutput=append:$SERVICE_LOG
 StandardError=append:$SERVICE_LOG
 Restart=always
@@ -211,7 +219,7 @@ UNIT
     SERVICE_MODE="systemd"
   else
     remote_run "if [[ -f '$SERVICE_PID' ]]; then kill \"\$(cat '$SERVICE_PID')\" 2>/dev/null || true; fi; sleep 1"
-    remote_run "cd '$APP_DIR' && DSH_HOME='$DSH_HOME_REMOTE' nohup node --import tsx/esm apps/cli/src/bin.ts web --no-open --host '$bind' --port '$PORT' >> '$SERVICE_LOG' 2>&1 & echo \$! > '$SERVICE_PID'"
+    remote_run "cd '$APP_DIR' && DSH_HOME='$DSH_HOME_REMOTE' nohup node --import tsx/esm apps/cli/src/bin.ts web --no-open --host '$bind' --port '$PORT' $TRUST_FLAGS >> '$SERVICE_LOG' 2>&1 & echo \$! > '$SERVICE_PID'"
     SERVICE_MODE="nohup"
   fi
 }
