@@ -5,7 +5,9 @@ import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { QuoteSelectionAction } from '../src/client/QuoteSelection.tsx'
+import { AnnotationsTab } from '../src/client/AnnotationsTab.tsx'
 import { AnnotationsController, annotationBridge } from '../src/client/annotations.ts'
+import type { AnnotationItem } from '../src/client/annotations.ts'
 import type { SessionAnnotation } from '@deepseek-ai/dsh-api-session-controller/types'
 import { MARK_ATTR, anchorQuote, closeAskPopover, quoteRanks } from '../src/client/annotation-dom.ts'
 
@@ -19,7 +21,9 @@ type Props = ComponentProps<typeof QuoteSelectionAction>
 /** A live controller against stub Remote and Sidebar seats, as the plugin's inject resolves them. */
 function makeController() {
   const generate = vi.fn(async () => ({ ok: true as const, value: 'the model answer' }))
-  const put = vi.fn(async () => ({ ok: true as const, value: undefined }))
+  const put = vi.fn(
+    async (_request: { sessionId: SessionId; annotation: SessionAnnotation }) => ({ ok: true as const, value: undefined }),
+  )
   const list = vi.fn(async () => ({ ok: true as const, value: [] as SessionAnnotation[] }))
   const remove = vi.fn(async () => ({ ok: true as const, value: true }))
   const openTabIn = vi.fn()
@@ -172,10 +176,11 @@ describe('quotation annotations', () => {
       })
       // The pending record lands before generation, the settled one after it.
       await waitFor(() => { expect(put).toHaveBeenCalledTimes(2) })
-      const [pendingRequest, settledRequest] = put.mock.calls.map(([request]) => request)
-      expect(pendingRequest.sessionId).toBe(SESSION)
-      expect(pendingRequest.annotation).toMatchObject({ kind: 'explain', quote: QUOTE, status: 'pending' })
-      expect(settledRequest.annotation).toMatchObject({ status: 'done', answer: 'the model answer' })
+      const pendingRequest = put.mock.calls[0]?.[0]
+      const settledRequest = put.mock.calls[1]?.[0]
+      expect(pendingRequest?.sessionId).toBe(SESSION)
+      expect(pendingRequest?.annotation).toMatchObject({ kind: 'explain', quote: QUOTE, status: 'pending' })
+      expect(settledRequest?.annotation).toMatchObject({ status: 'done', answer: 'the model answer' })
 
       const id = controller.session(SESSION).items[0]!.id
       controller.remove(SESSION, id)
@@ -212,6 +217,60 @@ describe('quotation annotations', () => {
       expect(controller.session(SESSION).items).toHaveLength(2)
     } finally {
       resetBridge()
+    }
+  })
+})
+
+describe('annotation cards', () => {
+  const DONE: AnnotationItem = {
+    id: 'card-done', sessionId: SESSION, kind: 'explain', quote: QUOTE, status: 'done', answer: 'the model answer', createdAt: 1,
+  }
+
+  /** Tab props over one Session's items, with a focus request when given. */
+  function tabProps(items: readonly AnnotationItem[], focusId?: string) {
+    const state = { bySession: { [SESSION]: { items, focus: focusId === undefined ? null : { id: focusId } } } }
+    return {
+      sessionId: SESSION,
+      useAnnotations: (selector: (value: unknown) => unknown) => selector(state),
+      ensureAnnotations: vi.fn(),
+      revealQuote: vi.fn(),
+      removeAnnotation: vi.fn(),
+      retryAnnotation: vi.fn(),
+      clearFocus: vi.fn(),
+      t: (key: string) => key,
+    } as unknown as ComponentProps<typeof AnnotationsTab>
+  }
+
+  it('starts collapsed and toggles from the card header', () => {
+    mountConversation()
+    try {
+      const view = render(<AnnotationsTab {...tabProps([DONE])} />)
+      const toggle = view.getByRole('button', { name: 'annotation.expand' })
+      expect(toggle.getAttribute('aria-expanded')).toBe('false')
+      // Collapsed keeps the quotation's opening line but hides the answer.
+      expect(view.container.querySelector('[data-annotation-card]')?.textContent).toContain(QUOTE)
+      expect(view.queryByText('the model answer')).toBeNull()
+
+      fireEvent.click(toggle)
+      expect(view.getByRole('button', { name: 'annotation.collapse' }).getAttribute('aria-expanded')).toBe('true')
+      expect(view.getByText('the model answer')).not.toBeNull()
+
+      fireEvent.click(view.getByRole('button', { name: 'annotation.collapse' }))
+      expect(view.queryByText('the model answer')).toBeNull()
+      expect(view.getByRole('button', { name: 'annotation.expand' })).not.toBeNull()
+    } finally {
+      document.body.innerHTML = ''
+    }
+  })
+
+  it('opens the card a conversation mark click focused', () => {
+    mountConversation()
+    try {
+      const view = render(<AnnotationsTab {...tabProps([DONE], DONE.id)} />)
+      expect(view.getByText('the model answer')).not.toBeNull()
+      expect(view.getByRole('button', { name: 'annotation.collapse' })).not.toBeNull()
+    } finally {
+      document.body.innerHTML = ''
     }
   })
 })

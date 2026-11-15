@@ -46,7 +46,67 @@
   gap: 8px;
 }
 
+/* The header is the collapse switch; the remove button sits beside it. */
+.toggle {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px -6px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .toggle:hover {
+    background: var(--dsw-alias-interactive-bg-hover-accent, rgba(15, 23, 42, 0.06));
+  }
+}
+
+.chevron {
+  flex: none;
+  width: 12px;
+  color: var(--dsw-alias-label-tertiary, #9ca3af);
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* Collapsed summary: the quotation's opening line, clipped to the card width. */
+.preview {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-secondary, #6b7280);
+  font: var(--dsw-font-xs-13, 13px/1.6 sans-serif);
+}
+
+.statusBadge {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(185, 28, 28, 0.12);
+  color: var(--dsw-alias-label-error, #b91c1c);
+  font: var(--dsw-font-2xs-11, 11px/1.5 sans-serif);
+}
+
+/* Expanded content: the same stack the card used while it was always open. */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .kind {
+  flex: none;
   padding: 1px 8px;
   border-radius: 999px;
   font: var(--dsw-font-2xs-11, 11px/1.5 sans-serif);
@@ -121,6 +181,7 @@
 }
 
 .spinner {
+  flex: none;
   width: 12px;
   height: 12px;
   border-radius: 50%;

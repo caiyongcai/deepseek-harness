@@ -100,7 +100,8 @@ export function AnnotationsTab(
     if (focus === null) return
     const card = rootRef.current?.querySelector(`[data-annotation-card="${focus.id}"]`)
     if (card instanceof HTMLElement) {
-      card.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      // jsdom and older engines may not implement scrolling.
+      if (typeof card.scrollIntoView === 'function') card.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
       card.setAttribute('data-annotation-card-flash', '')
       const timer = globalThis.setTimeout(() => { card.removeAttribute('data-annotation-card-flash') }, 1800)
       clearFocus(sessionId)
@@ -118,6 +119,7 @@ export function AnnotationsTab(
           key={item.id}
           item={item}
           sessionId={sessionId}
+          focused={focus?.id === item.id}
           revealQuote={revealQuote}
           removeAnnotation={removeAnnotation}
           retryAnnotation={retryAnnotation}
@@ -129,22 +131,48 @@ export function AnnotationsTab(
 }
 
 /**
- * One Word-style annotation card: the quotation as the anchor header, the
- * question for ask cards, and the model reply or its progress/failure state.
+ * One Word-style annotation card. The header is the collapse switch: a
+ * collapsed card keeps only the kind, the quotation's first line, and any
+ * progress/failure marker, so a long list stays scannable. Expanding reveals
+ * the full quotation (itself the reveal action), the question, and the answer.
  */
-function AnnotationCard({ item, sessionId, revealQuote, removeAnnotation, retryAnnotation, t }: {
+function AnnotationCard({ item, sessionId, focused, revealQuote, removeAnnotation, retryAnnotation, t }: {
   item: AnnotationItem
   sessionId: SessionId
+  /** A conversation mark click asked for this card; opening it shows the answer. */
+  focused: boolean
   revealQuote: AnnotationsTabInjected['revealQuote']
   removeAnnotation: AnnotationsTabInjected['removeAnnotation']
   retryAnnotation: AnnotationsTabInjected['retryAnnotation']
 } & PropsLocale<'messageQuotes'>): ReactNode {
+  const [expanded, setExpanded] = useState(false)
+
+  // Focus from a conversation mark opens the card, then the caller clears it.
+  useEffect(() => {
+    if (focused) setExpanded(true)
+  }, [focused])
+
   return (
-    <article className={css.card} data-annotation-card={item.id}>
-      <header className={css.head}>
-        <span className={css.kind} data-kind={item.kind}>
-          {t(item.kind === 'ask' ? 'annotation.kind.ask' : 'annotation.kind.explain')}
-        </span>
+    <article className={css.card} data-annotation-card={item.id} data-expanded={expanded ? 'true' : 'false'}>
+      <div className={css.head}>
+        <button
+          type="button"
+          className={css.toggle}
+          aria-expanded={expanded}
+          aria-label={t(expanded ? 'annotation.collapse' : 'annotation.expand')}
+          title={t(expanded ? 'annotation.collapse' : 'annotation.expand')}
+          onClick={() => { setExpanded(value => !value) }}
+        >
+          <span className={css.chevron} aria-hidden="true">{expanded ? '▾' : '▸'}</span>
+          <span className={css.kind} data-kind={item.kind}>
+            {t(item.kind === 'ask' ? 'annotation.kind.ask' : 'annotation.kind.explain')}
+          </span>
+          {!expanded && <span className={css.preview}>{item.quote}</span>}
+          {item.status === 'pending' && <span className={css.spinner} aria-label={t('annotation.pending')} />}
+          {item.status === 'failed' && (
+            <span className={css.statusBadge} data-status="failed">{t('annotation.failed')}</span>
+          )}
+        </button>
         <button
           type="button"
           className={css.remove}
@@ -154,33 +182,37 @@ function AnnotationCard({ item, sessionId, revealQuote, removeAnnotation, retryA
         >
           ×
         </button>
-      </header>
-      <button
-        type="button"
-        className={css.quote}
-        title={t('annotation.reveal')}
-        onClick={() => { revealQuote(sessionId, item.id) }}
-      >
-        {item.quote}
-      </button>
-      {item.kind === 'ask' && item.question !== undefined && (
-        <div className={css.question}>
-          <span className={css.questionLabel}>{t('annotation.question')}</span>
-          {item.question}
-        </div>
-      )}
-      {item.status === 'pending' && (
-        <div className={css.pending}><span className={css.spinner} />{t('annotation.pending')}</div>
-      )}
-      {item.status === 'failed' && (
-        <div className={css.failed}>
-          <span className={css.failedText}>{t('annotation.failed')}{item.answer.length > 0 ? `：${item.answer}` : ''}</span>
-          <button type="button" className={css.retry} onClick={() => { retryAnnotation(sessionId, item.id) }}>
-            {t('annotation.retry')}
+      </div>
+      {expanded && (
+        <div className={css.body}>
+          <button
+            type="button"
+            className={css.quote}
+            title={t('annotation.reveal')}
+            onClick={() => { revealQuote(sessionId, item.id) }}
+          >
+            {item.quote}
           </button>
+          {item.kind === 'ask' && item.question !== undefined && (
+            <div className={css.question}>
+              <span className={css.questionLabel}>{t('annotation.question')}</span>
+              {item.question}
+            </div>
+          )}
+          {item.status === 'pending' && (
+            <div className={css.pending}><span className={css.spinner} />{t('annotation.pending')}</div>
+          )}
+          {item.status === 'failed' && (
+            <div className={css.failed}>
+              <span className={css.failedText}>{t('annotation.failed')}{item.answer.length > 0 ? `：${item.answer}` : ''}</span>
+              <button type="button" className={css.retry} onClick={() => { retryAnnotation(sessionId, item.id) }}>
+                {t('annotation.retry')}
+              </button>
+            </div>
+          )}
+          {item.status === 'done' && <div className={css.answer}>{item.answer}</div>}
         </div>
       )}
-      {item.status === 'done' && <div className={css.answer}>{item.answer}</div>}
     </article>
   )
 }

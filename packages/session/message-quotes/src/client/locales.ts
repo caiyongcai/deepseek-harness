@@ -21,6 +21,8 @@ export const zh = {
   'annotation.retry': '重试',
   'annotation.remove': '删除批注',
   'annotation.reveal': '定位到对话中的引用文本',
+  'annotation.expand': '展开批注',
+  'annotation.collapse': '折叠批注',
 }
 
 /** Supported Quote interaction copy keys. */
@@ -44,6 +46,8 @@ export const en: Record<MessageQuotesKey, string> = {
   'annotation.retry': 'Retry',
   'annotation.remove': 'Delete annotation',
   'annotation.reveal': 'Reveal the quoted text in the conversation',
+  'annotation.expand': 'Expand annotation',
+  'annotation.collapse': 'Collapse annotation',
 }
 
 /** Japanese dictionary. */
@@ -64,6 +68,8 @@ export const ja = {
   'annotation.retry': '再試行',
   'annotation.remove': '注釈を削除',
   'annotation.reveal': '会話内の引用テキストに移動',
+  'annotation.expand': '注釈を展開',
+  'annotation.collapse': '注釈を折りたたむ',
 } satisfies Record<MessageQuotesKey, string>
 
 /** Spanish dictionary, checked against the English keys. */
@@ -84,6 +90,8 @@ export const es = {
   'annotation.retry': 'Reintentar',
   'annotation.remove': 'Eliminar anotación',
   'annotation.reveal': 'Mostrar el texto citado en la conversación',
+  'annotation.expand': 'Expandir anotación',
+  'annotation.collapse': 'Contraer anotación',
 } satisfies Record<keyof typeof en, string>
 
 /** French dictionary, checked against the English keys. */
@@ -104,6 +112,8 @@ export const fr = {
   'annotation.retry': 'Réessayer',
   'annotation.remove': "Supprimer l'annotation",
   'annotation.reveal': 'Afficher le texte cité dans la conversation',
+  'annotation.expand': "Développer l'annotation",
+  'annotation.collapse': "Réduire l'annotation",
 } satisfies Record<keyof typeof en, string>
 
 /** German dictionary, checked against the English keys. */
@@ -124,6 +134,8 @@ export const de = {
   'annotation.retry': 'Erneut versuchen',
   'annotation.remove': 'Anmerkung löschen',
   'annotation.reveal': 'Zitierten Text in der Unterhaltung anzeigen',
+  'annotation.expand': 'Anmerkung ausklappen',
+  'annotation.collapse': 'Anmerkung einklappen',
 } satisfies Record<keyof typeof en, string>
 
 /** Russian dictionary, checked against the English keys. */
@@ -144,6 +156,8 @@ export const ru = {
   'annotation.retry': 'Повторить',
   'annotation.remove': 'Удалить примечание',
   'annotation.reveal': 'Показать цитируемый текст в диалоге',
+  'annotation.expand': 'Развернуть примечание',
+  'annotation.collapse': 'Свернуть примечание',
 } satisfies Record<keyof typeof en, string>
 
 /** Portuguese dictionary, checked against the English keys. */
@@ -164,4 +178,6 @@ export const pt = {
   'annotation.retry': 'Tentar novamente',
   'annotation.remove': 'Excluir anotação',
   'annotation.reveal': 'Mostrar o texto citado na conversa',
+  'annotation.expand': 'Expandir anotação',
+  'annotation.collapse': 'Recolher anotação',
 } satisfies Record<keyof typeof en, string>
