@@ -6,23 +6,30 @@
  * 第一帧：解出第一帧 → 替换 cwd → 单独重压缩；其余帧的字节原样保留，事件内容
  * 零改动。
  *
- * 用法：node --import tsx/esm rewrite-session-cwd.ts <DSH_HOME> <FROM_CWD_B64> <TO_CWD>
+ * 用法：node --import tsx/esm scripts/rewrite-session-cwd.ts <DSH_HOME> <FROM_CWD_B64> <TO_CWD>
  * 幂等：cwd 已等于 TO 的会话跳过；仅处理 v4 生成（session.v4.jsonl.zstd）。
- * （需放在 session-persistence-jsonl 包目录内、用 tsx 加载以复用包内解码器。）
+ * （直接复用 session-persistence-jsonl 包内解码器，在仓库任意位置用 tsx 运行。）
  */
 import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-const { scanZstdFrames, createZstdFrameDecoder, compressZstdFrame } = await import('./src/zstd.ts')
+import {
+  compressZstdFrame,
+  createZstdFrameDecoder,
+  scanZstdFrames,
+  type ZstdFrameRange,
+} from '../packages/session/session-persistence-jsonl/src/zstd.ts'
 
 const [dshHome, fromCwdB64, toCwd] = process.argv.slice(2)
-if ([dshHome, fromCwdB64, toCwd].some(v => v === undefined)) {
-  console.error('usage: node rewrite-session-cwd.ts <DSH_HOME> <FROM_CWD_B64> <TO_CWD>')
+if (dshHome === undefined || fromCwdB64 === undefined || toCwd === undefined) {
+  console.error('usage: node scripts/rewrite-session-cwd.ts <DSH_HOME> <FROM_CWD_B64> <TO_CWD>')
   process.exit(2)
 }
 const fromCwd = Buffer.from(fromCwdB64, 'base64').toString('utf8')
 
+const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error))
+
 // 解码器返回的是内部暂存视图，下一次调用即失效，必须立即拷贝。
-function decodeFrame(buffer, range) {
+function decodeFrame(buffer: Buffer, range: ZstdFrameRange): string {
   const decoder = createZstdFrameDecoder()
   let text = ''
   for (const chunk of decoder.decode(buffer, [range])) text += Buffer.from(chunk).toString('utf8')
@@ -30,7 +37,7 @@ function decodeFrame(buffer, range) {
   return text
 }
 
-function isDirectory(path) {
+function isDirectory(path: string): boolean {
   try { return statSync(path).isDirectory() } catch { return false }
 }
 
@@ -49,11 +56,11 @@ for (const key of readdirSync(sessionsRoot)) {
 
     const buffer = readFileSync(logPath)
     const scan = scanZstdFrames(buffer)
-    if (scan.frames.length === 0 || scan.tornStart !== undefined) {
+    const firstFrame = scan.frames[0]
+    if (firstFrame === undefined || scan.tornStart !== undefined) {
       skipped.push(`${entry}: torn or empty log`)
       continue
     }
-    const firstFrame = scan.frames[0]
     const headerText = decodeFrame(buffer, firstFrame)
     if (!headerText.endsWith('\n') || headerText.indexOf('\n') !== headerText.length - 1) {
       skipped.push(`${entry}: first frame is not exactly one line`)
@@ -63,7 +70,7 @@ for (const key of readdirSync(sessionsRoot)) {
     try {
       header = JSON.parse(headerText.slice(0, -1))
     } catch (error) {
-      skipped.push(`${entry}: header parse failed (${error.message})`)
+      skipped.push(`${entry}: header parse failed (${errorMessage(error)})`)
       continue
     }
     if (header.type !== 'session') {
